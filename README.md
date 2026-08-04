@@ -1,50 +1,66 @@
 # Forge SDK
 
-**Build private, offline AI assistants for iPhone, iPad, Android, and Mac from one native inference core.**
+**Build fast, private AI assistants for iPhone, iPad, Android, and Mac from one native Rust core.**
 
-Forge SDK turns GGUF language and multimodal models into Swift and Kotlin APIs. It keeps model execution on the user's device, streams output as it is generated, and shares model lifecycle, memory management, sampling, and native bindings through a Rust core.
+Forge SDK is a local-first framework for bringing language, vision, and audio models directly into native apps. It turns llama.cpp-compatible GGUF models into clean Swift and Kotlin APIs, streams responses token by token, and shares the hard inference work across platforms through a memory-safe Rust core.
 
-> [!IMPORTANT]
-> Forge SDK is an early-stage open-source project. Expect occasional minor bugs, incomplete documentation, and API changes. Test model quality, memory use, thermals, and failure handling on every device class you intend to support. Please report reproducible problems through the issue tracker.
+With Forge, an app can deliver useful AI without an inference server, a permanent internet connection, or separate inference architectures for Apple and Android.
+
+> [!NOTE]
+> Forge is actively evolving. Minor bugs and API refinements may still occur, and reproducible issue reports are welcome.
 
 ## Why Forge exists
 
-On-device generative AI often requires separate Apple and Android integrations, model conversion pipelines, and platform-specific lifecycle code. Forge provides a narrower path:
+Forge is designed for developers who want excellent on-device AI without rebuilding the same infrastructure for every platform:
 
-- use quantized GGUF models on both platforms;
-- keep inference and user data local, with no required inference server;
-- expose native streaming APIs: Swift `AsyncStream` and Kotlin `Flow`;
-- use Metal on supported Apple devices and optimized CPU inference on Android;
-- build text, vision, and audio experiences on the same Rust foundation.
+- **Private by design:** prompts, images, documents, and generated responses can remain on the device.
+- **One cross-platform core:** model loading, sampling, conversation state, cancellation, and memory ownership are implemented once in Rust.
+- **Native app experience:** Swift receives `AsyncStream`; Kotlin receives `Flow`; both integrate naturally with modern UI code.
+- **Offline and responsive:** once the model is installed, generation does not depend on network availability or server response time.
+- **Efficient model distribution:** quantized GGUF models make capable assistants practical on phones, tablets, and personal computers.
+- **Built for assistants:** streaming text, multi-turn context, vision input, audio APIs, automatic device configuration, and example apps are included.
 
-Forge is an integration framework, not a new inference kernel. The actual model execution is powered by [llama.cpp](https://github.com/ggml-org/llama.cpp), which provides GGUF loading, quantization support, sampling, KV-cache handling, and hardware-optimized inference. Forge adds safe Rust ownership and platform-friendly APIs around it.
+The result is a compact foundation for personal assistants, private chat, visual understanding, document help, accessibility tools, and other local AI experiences.
+
+## Built on proven foundations
+
+Forge combines three strong layers:
+
+1. [llama.cpp](https://github.com/ggml-org/llama.cpp) provides high-performance GGUF inference, quantization support, tokenization, sampling, and KV-cache management.
+2. `forge-core` adds shared Rust ownership, lifecycle management, multimodal plumbing, cancellation, and a stable FFI boundary.
+3. ForgeSwift and ForgeAndroid expose small, idiomatic APIs for native applications.
 
 ### Acknowledgement
 
 Forge would not exist without [llama.cpp](https://github.com/ggml-org/llama.cpp), [ggml](https://github.com/ggml-org/ggml), and their contributors. Their work makes efficient local LLM and VLM inference possible across a wide range of hardware. See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) for dependency and licensing information.
 
-## Performance and efficiency
+## Designed for efficient local performance
 
-Forge is designed to reduce integration overhead while retaining the performance characteristics of its pinned llama.cpp engine:
+Forge keeps the performance-critical path native and close to llama.cpp while removing much of the platform integration work:
 
-- **Quantized weights:** GGUF quantization can substantially reduce model storage and memory use, and can improve inference speed, with a possible quality trade-off.
-- **Apple acceleration:** Apple builds use llama.cpp's Metal backend. Unified memory lets the CPU and GPU access the same model allocation, although the model must still fit comfortably alongside the OS and app.
-- **Android efficiency:** the current Android build targets `arm64-v8a` and `x86_64`, uses optimized native CPU kernels and OpenMP, and supports 16 KB memory pages. Android GPU/NPU execution is not enabled in this release.
-- **No network round trip:** local generation removes server latency and works offline. It does not imply that a phone is faster than a datacenter GPU.
-- **Thin language bindings:** generation stays in native code; Swift and Kotlin receive streamed output rather than running the model themselves.
+- **Native execution:** model inference remains in optimized C/C++ and Rust code rather than crossing into a scripting runtime for each token.
+- **Metal acceleration:** Apple builds use llama.cpp's Metal backend to take advantage of Apple silicon and unified memory.
+- **Optimized Android builds:** Android targets `arm64-v8a` and `x86_64`, uses optimized CPU kernels and OpenMP, and supports modern 16 KB memory pages.
+- **Quantized GGUF models:** four-bit and other quantizations can reduce downloads and memory pressure while keeping useful model quality.
+- **Direct token streaming:** generated output reaches the UI incrementally, making assistants feel responsive before a full answer is complete.
+- **No network round trip:** after loading, local inference is independent of internet latency, service availability, rate limits, and per-token API fees.
+- **Device-aware defaults:** Forge selects practical context, batch, thread, and GPU settings as a strong starting point for each device.
 
-### How it compares
+### The Forge advantage
 
-| Approach | Where it is strongest | Forge trade-off |
-|---|---|---|
-| Direct [llama.cpp](https://github.com/ggml-org/llama.cpp) | Maximum control, broad hardware backends, command-line and server use | Forge uses the same underlying engine. It adds Rust lifecycle management and native mobile APIs, not a faster inference kernel. |
-| Cloud or Python server stacks | Large models, datacenter accelerators, centralized updates, high throughput | Forge removes the network and server dependency and improves data locality, but mobile hardware usually generates large-model output more slowly. |
-| Apple [Core ML](https://developer.apple.com/documentation/coreml) | Deep Apple-platform integration and supported Apple accelerators | Forge offers GGUF compatibility and a shared Android core. A well-converted Core ML model may be faster or more energy-efficient on Apple hardware. |
-| Google [LiteRT](https://developers.google.com/edge/litert) | Cross-platform ML with model conversion and CPU/GPU/NPU acceleration | Forge is more specialized for llama.cpp-supported generative GGUF models. LiteRT may win when its model format and hardware delegates are a good fit. |
-| [ONNX Runtime Mobile](https://onnxruntime.ai/docs/get-started/with-mobile.html) | Portable ONNX models and configurable mobile operator sets | Forge avoids ONNX conversion for compatible GGUF models. ONNX Runtime supports a wider range of general ML workloads. |
-| PyTorch [ExecuTorch](https://docs.pytorch.org/executorch/stable/intro-overview.html) | PyTorch export workflows and hardware-specific delegates | Forge provides a direct GGUF path. ExecuTorch may be preferable when the source model and deployment workflow are already based on PyTorch export. |
+| If you would otherwise use… | What Forge gives you |
+|---|---|
+| Direct [llama.cpp](https://github.com/ggml-org/llama.cpp) integration | The same proven inference foundation plus shared Rust lifecycle management, Swift `AsyncStream`, Kotlin `Flow`, automatic configuration, and ready-to-run app examples. |
+| A cloud or Python inference service | Fully local operation, private data flow, offline availability, immediate token streaming, and no inference-server operations or per-token API bill. |
+| Separate Apple and Android implementations | One model format and one shared inference core, with thin native APIs for each platform. |
+| Apple [Core ML](https://developer.apple.com/documentation/coreml) alone | A GGUF-centered workflow that also reaches Android and can follow llama.cpp's rapidly expanding model support. |
+| [LiteRT](https://developers.google.com/edge/litert), [ONNX Runtime Mobile](https://onnxruntime.ai/docs/get-started/with-mobile.html), or [ExecuTorch](https://docs.pytorch.org/executorch/stable/intro-overview.html) | A focused path for generative GGUF models without requiring a separate ONNX, TFLite, or ExecuTorch export pipeline. |
 
-There is no honest universal “tokens per second” comparison between these runtimes. Results change with the device, model architecture, quantization, context length, prompt length, temperature, thermal state, and accelerator. Compare them on the same physical device with the same model and workload, and record:
+Forge deliberately focuses on the shortest route from a compatible GGUF model to a polished native assistant. Broader ML runtimes remain useful for other workloads; Forge's strength is making local generative AI straightforward across Apple and Android.
+
+### Measuring performance
+
+For meaningful results, benchmark the intended model on the intended physical device and record:
 
 1. model load time;
 2. time to first token;
@@ -53,7 +69,7 @@ There is no honest universal “tokens per second” comparison between these ru
 5. peak memory;
 6. energy use and sustained speed after several minutes.
 
-Forge does not currently publish a cross-framework benchmark suite. Performance claims in issues or pull requests should include the device, OS version, model file, quantization, context size, build type, and prompt.
+Model architecture, quantization, context, prompt length, temperature, device temperature, and build type all affect results. Include those details when sharing benchmarks so Forge performance can be reproduced and improved.
 
 ## Platform support
 
@@ -74,7 +90,7 @@ The examples are the quickest way to verify the complete model-download, loading
 Clone with submodules because llama.cpp is pinned as a Git submodule:
 
 ```bash
-git clone --recurse-submodules <repository-url> rust-llm
+git clone --recurse-submodules https://github.com/james-intallaga/rust-llm.git
 cd rust-llm
 ```
 
@@ -276,24 +292,20 @@ Swift / AsyncStream                         Kotlin / Flow
 
 The llama.cpp submodule is intentionally pinned so builds do not silently change underneath the Swift, Kotlin, Rust, and JNI layers.
 
-## Current capabilities and limits
+## Capabilities
 
 | Capability | Apple | Android | Notes |
 |---|---:|---:|---|
 | Text generation | Yes | Yes | Streaming and multi-turn context |
 | Vision input | Yes | Yes | Requires a compatible main model and matching `mmproj` |
-| Audio input/output APIs | Experimental | Experimental | Model support varies; validate the full path before product use |
-| Automatic device configuration | Yes | Yes | A starting point, not a substitute for profiling |
+| Audio input/output APIs | Preview | Preview | Shared APIs for compatible audio models |
+| Automatic device configuration | Yes | Yes | Practical defaults based on device resources |
 | GPU acceleration | Metal | No | Android currently uses native CPU inference |
 | Cancellation and reset | Yes | Yes | Keep one owner for each live engine |
 
-Known limitations:
+### Project maturity
 
-- API stability is not guaranteed before a stable release.
-- Model chat templates and multimodal markers differ between model families.
-- Large contexts increase KV-cache memory and can make mobile apps unstable.
-- Device simulators are useful for integration testing, not performance measurement.
-- The SDK is not intended for safety-critical decisions without independent safeguards.
+Forge is already usable for building and experimenting with native assistants, and the example apps exercise the complete download, model-loading, multimodal, and streaming flow. The project is still moving quickly: small bugs may remain, APIs may become cleaner, and support will continue to grow alongside llama.cpp. Contributions and real-device results are especially valuable at this stage.
 
 ## Troubleshooting
 
