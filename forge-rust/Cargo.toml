@@ -39,7 +39,7 @@ env_logger = "0.11"
 # Build tools (used in build.rs)
 bindgen = "0.69"
 cc = "1.0"
-cbindgen = "0.26"
+cbindgen = "0.29"
 
 [profile.release]
 opt-level = 3
