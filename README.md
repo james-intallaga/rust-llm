@@ -74,8 +74,8 @@ The examples are the quickest way to verify the complete model-download, loading
 Clone with submodules because llama.cpp is pinned as a Git submodule:
 
 ```bash
-git clone --recurse-submodules <repository-url> amma-forge-sdk
-cd amma-forge-sdk
+git clone --recurse-submodules <repository-url> amma-forge-simple
+cd amma-forge-simple
 ```
 
 If you already cloned without submodules:
@@ -188,7 +188,7 @@ Include the library module in your Gradle settings:
 
 ```kotlin
 include(":forge-android")
-project(":forge-android").projectDir = file("../amma-forge-sdk/ForgeAndroid/forge-android")
+project(":forge-android").projectDir = file("../amma-forge-simple/ForgeAndroid/forge-android")
 ```
 
 Add it to the app module:
