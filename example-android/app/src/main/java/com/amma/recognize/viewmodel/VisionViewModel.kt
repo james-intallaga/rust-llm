@@ -20,6 +20,7 @@ import kotlinx.serialization.json.Json
 import java.io.*
 import java.net.HttpURLConnection
 import java.net.URL
+import java.security.MessageDigest
 import java.util.UUID
 
 /**
@@ -47,8 +48,11 @@ class VisionViewModel(application: Application) : AndroidViewModel(application) 
         private const val CLIP_FILENAME = "mmproj-LFM2.5-VL-450m-Q8_0.gguf"
         private const val MODEL_SIZE = 229_313_568L
         private const val CLIP_SIZE = 102_815_168L
-        private const val MODEL_URL = "https://huggingface.co/LiquidAI/$MODEL_SLUG-GGUF/resolve/main/$MODEL_FILENAME?download=true"
-        private const val CLIP_URL = "https://huggingface.co/LiquidAI/$MODEL_SLUG-GGUF/resolve/main/$CLIP_FILENAME?download=true"
+        private const val MODEL_REVISION = "6f15859c2de1583b6180a9bc56338342592b589a"
+        private const val MODEL_SHA256 = "1093f1331319199bbcacdbd7ecc9aa6e5678db6b55073948d0f508be90c8ab68"
+        private const val CLIP_SHA256 = "ebfc428baa37efad8bae93864f914b2634a09009f91ad59f974fe1a1565d8561"
+        private const val MODEL_URL = "https://huggingface.co/LiquidAI/$MODEL_SLUG-GGUF/resolve/$MODEL_REVISION/$MODEL_FILENAME?download=true"
+        private const val CLIP_URL = "https://huggingface.co/LiquidAI/$MODEL_SLUG-GGUF/resolve/$MODEL_REVISION/$CLIP_FILENAME?download=true"
     }
 
     private val context = application.applicationContext
@@ -354,14 +358,14 @@ class VisionViewModel(application: Application) : AndroidViewModel(application) 
                 val modelFile = File(modelsDir, MODEL_FILENAME)
                 val clipFile = File(modelsDir, CLIP_FILENAME)
 
-                removeIncompleteFile(modelFile, MODEL_SIZE)
-                removeIncompleteFile(clipFile, CLIP_SIZE)
+                validateExistingFile(modelFile, MODEL_SIZE, MODEL_SHA256)
+                validateExistingFile(clipFile, CLIP_SIZE, CLIP_SHA256)
 
                 // Download model if needed
                 if (!modelFile.exists()) {
                     _loadingStage.value = LoadingStage.DOWNLOADING
                     _loadingStatus.value = "Downloading model..."
-                    downloadFile(MODEL_URL, modelFile, MODEL_SIZE) { progress, speed ->
+                    downloadFile(MODEL_URL, modelFile, MODEL_SIZE, MODEL_SHA256) { progress, speed ->
                         _loadingProgress.value = progress * 0.5 // 0-50%
                         val speedMB = speed / (1024 * 1024)
                         _loadingStatus.value = "Downloading: ${(progress * 100).toInt()}% • ${String.format("%.1f", speedMB)} MB/s"
@@ -372,7 +376,7 @@ class VisionViewModel(application: Application) : AndroidViewModel(application) 
                 if (!clipFile.exists()) {
                     _loadingStage.value = LoadingStage.DOWNLOADING
                     _loadingStatus.value = "Downloading vision model..."
-                    downloadFile(CLIP_URL, clipFile, CLIP_SIZE) { progress, speed ->
+                    downloadFile(CLIP_URL, clipFile, CLIP_SIZE, CLIP_SHA256) { progress, speed ->
                         _loadingProgress.value = 0.5 + progress * 0.4 // 50-90%
                         val speedMB = speed / (1024 * 1024)
                         _loadingStatus.value = "Downloading vision: ${(progress * 100).toInt()}% • ${String.format("%.1f", speedMB)} MB/s"
@@ -439,11 +443,28 @@ class VisionViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
-    private fun removeIncompleteFile(file: File, expectedSize: Long) {
-        File(file.parentFile, "${file.name}.part").delete()
-        if (file.exists() && file.length() != expectedSize) {
-            Log.w(TAG, "Removing incomplete ${file.name}: ${file.length()} of $expectedSize bytes")
+    private suspend fun validateExistingFile(
+        file: File,
+        expectedSize: Long,
+        expectedSha256: String
+    ) = withContext(Dispatchers.IO) {
+        val partial = File(file.parentFile, "${file.name}.part")
+        val trustMarker = File(file.parentFile, "${file.name}.sha256")
+        partial.delete()
+        if (!file.exists()) {
+            trustMarker.delete()
+            return@withContext
+        }
+
+        val trusted = file.length() == expectedSize &&
+            (trustMarker.takeIf(File::exists)?.readText()?.trim() == expectedSha256 ||
+                sha256(file) == expectedSha256)
+        if (!trusted) {
+            Log.w(TAG, "Removing model that failed integrity verification: ${file.name}")
             file.delete()
+            trustMarker.delete()
+        } else if (!trustMarker.exists()) {
+            trustMarker.writeText(expectedSha256)
         }
     }
 
@@ -451,6 +472,7 @@ class VisionViewModel(application: Application) : AndroidViewModel(application) 
         urlString: String,
         destination: File,
         expectedSize: Long,
+        expectedSha256: String,
         onProgress: (Double, Double) -> Unit
     ) = withContext(Dispatchers.IO) {
         val partial = File(destination.parentFile, "${destination.name}.part")
@@ -469,9 +491,13 @@ class VisionViewModel(application: Application) : AndroidViewModel(application) 
             }
 
             val contentLength = connection.contentLengthLong
+            if (contentLength > 0 && contentLength != expectedSize) {
+                throw IOException("Unexpected download size: $contentLength bytes")
+            }
             var downloaded = 0L
             var lastUpdate = System.currentTimeMillis()
             var lastBytes = 0L
+            val digest = MessageDigest.getInstance("SHA-256")
 
             connection.inputStream.buffered().use { input ->
                 FileOutputStream(partial).buffered().use { output ->
@@ -480,6 +506,7 @@ class VisionViewModel(application: Application) : AndroidViewModel(application) 
 
                     while (input.read(buffer).also { bytesRead = it } != -1) {
                         output.write(buffer, 0, bytesRead)
+                        digest.update(buffer, 0, bytesRead)
                         downloaded += bytesRead
 
                         val now = System.currentTimeMillis()
@@ -501,18 +528,36 @@ class VisionViewModel(application: Application) : AndroidViewModel(application) 
             if (downloaded != expectedSize) {
                 throw IOException("Incomplete download: received $downloaded of $expectedSize bytes")
             }
+            val actualSha256 = digest.digest().joinToString("") { "%02x".format(it) }
+            if (actualSha256 != expectedSha256) {
+                throw IOException("Downloaded model failed SHA-256 verification")
+            }
             if (destination.exists() && !destination.delete()) {
                 throw IOException("Could not replace ${destination.name}")
             }
             if (!partial.renameTo(destination)) {
                 throw IOException("Could not finish ${destination.name}")
             }
+            File(destination.parentFile, "${destination.name}.sha256").writeText(expectedSha256)
         } catch (e: Exception) {
             partial.delete()
             throw e
         } finally {
             connection.disconnect()
         }
+    }
+
+    private fun sha256(file: File): String {
+        val digest = MessageDigest.getInstance("SHA-256")
+        file.inputStream().buffered().use { input ->
+            val buffer = ByteArray(1024 * 1024)
+            while (true) {
+                val count = input.read(buffer)
+                if (count < 0) break
+                digest.update(buffer, 0, count)
+            }
+        }
+        return digest.digest().joinToString("") { "%02x".format(it) }
     }
 
     // MARK: - Image Recognition

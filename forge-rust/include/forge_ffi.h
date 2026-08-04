@@ -411,7 +411,7 @@ enum ForgeResult forge_generate_audio(ForgeHandle engine,
                                       void *user_data);
 
 #ifdef __cplusplus
-} // extern "C"
-#endif // __cplusplus
+}  // extern "C"
+#endif  // __cplusplus
 
-#endif /* FORGE_FFI_H */
+#endif  /* FORGE_FFI_H */

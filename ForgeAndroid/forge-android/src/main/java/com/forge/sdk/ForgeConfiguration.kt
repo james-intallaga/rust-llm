@@ -37,6 +37,21 @@ data class ForgeConfiguration(
     /** Number of GPU layers (-1 = all, 0 = CPU only) */
     var gpuLayers: Int = 0  // CPU by default on Android
 ) {
+    internal fun validate() {
+        require(contextSize in 1..1_048_576) { "contextSize must be between 1 and 1,048,576" }
+        require(batchSize in 1..65_536) { "batchSize must be between 1 and 65,536" }
+        require(threads in 1..1_024) { "threads must be between 1 and 1,024" }
+        require(maxTokens in 1..1_048_576) { "maxTokens must be between 1 and 1,048,576" }
+        require(temperature.isFinite() && temperature in 0.0f..10.0f) {
+            "temperature must be finite and between 0 and 10"
+        }
+        require(topK in 0..1_000_000) { "topK must be between 0 and 1,000,000" }
+        require(topP.isFinite() && topP in 0.0f..1.0f) {
+            "topP must be finite and between 0 and 1"
+        }
+        require(gpuLayers in -1..1_000_000) { "gpuLayers must be -1 or a non-negative value" }
+    }
+
     companion object {
         private const val TAG = "ForgeConfiguration"
 
