@@ -21,7 +21,7 @@ thiserror = "1.0"
 anyhow = "1.0"
 
 # Image processing (for vision models)
-image = { version = "0.24", default-features = false, features = ["jpeg", "png"] }
+image = { version = "0.25", default-features = false, features = ["jpeg", "png"] }
 
 # Audio processing (for speech models - ISTFT vocoder)
 rustfft = "6.2"
