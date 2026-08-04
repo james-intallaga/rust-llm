@@ -74,8 +74,8 @@ The examples are the quickest way to verify the complete model-download, loading
 Clone with submodules because llama.cpp is pinned as a Git submodule:
 
 ```bash
-git clone --recurse-submodules <repository-url> amma-forge
-cd amma-forge
+git clone --recurse-submodules <repository-url> rust-llm
+cd rust-llm
 ```
 
 If you already cloned without submodules:
@@ -188,7 +188,7 @@ Include the library module in your Gradle settings:
 
 ```kotlin
 include(":forge-android")
-project(":forge-android").projectDir = file("../amma-forge/ForgeAndroid/forge-android")
+project(":forge-android").projectDir = file("../rust-llm/ForgeAndroid/forge-android")
 ```
 
 Add it to the app module:
@@ -328,4 +328,4 @@ Contributions are welcome. Read [CONTRIBUTING.md](CONTRIBUTING.md) before openin
 
 Forge SDK is available under the [MIT License](LICENSE). Model weights have their own licenses and are not covered by the Forge license.
 
-Copyright © 2026 AMMA AI Intallaga Tech.
+Copyright © 2026 James M. Z and AMMA AI Intallaga Tech.
