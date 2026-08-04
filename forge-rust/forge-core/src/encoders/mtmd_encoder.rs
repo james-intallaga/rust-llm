@@ -23,6 +23,65 @@ use llama_cpp_sys::{
 };
 
 use crate::error::{ForgeError, Result};
+
+/// Hard safety limits for images accepted by the public SDK. These limits are
+/// deliberately generous enough for high-resolution photography while keeping
+/// allocations bounded on mobile devices.
+pub(crate) const MAX_IMAGE_DIMENSION: u32 = 16_384;
+pub(crate) const MAX_IMAGE_PIXELS: u64 = 32_000_000;
+
+pub(crate) fn validated_pixel_count(width: u32, height: u32) -> Result<usize> {
+    if width == 0 || height == 0 {
+        return Err(ForgeError::ImageProcessingFailed(
+            "Image dimensions must be non-zero".to_string(),
+        ));
+    }
+    if width > MAX_IMAGE_DIMENSION || height > MAX_IMAGE_DIMENSION {
+        return Err(ForgeError::ImageProcessingFailed(format!(
+            "Image dimensions exceed the {} pixel limit",
+            MAX_IMAGE_DIMENSION
+        )));
+    }
+
+    let pixels = u64::from(width)
+        .checked_mul(u64::from(height))
+        .ok_or_else(|| ForgeError::ImageProcessingFailed("Image size overflow".to_string()))?;
+    if pixels > MAX_IMAGE_PIXELS {
+        return Err(ForgeError::ImageProcessingFailed(format!(
+            "Image contains {pixels} pixels; the limit is {MAX_IMAGE_PIXELS}"
+        )));
+    }
+
+    usize::try_from(pixels)
+        .map_err(|_| ForgeError::ImageProcessingFailed("Image size is unsupported".to_string()))
+}
+
+pub(crate) fn validated_rgba_len(width: u32, height: u32) -> Result<usize> {
+    validated_pixel_count(width, height)?
+        .checked_mul(4)
+        .ok_or_else(|| ForgeError::ImageProcessingFailed("RGBA buffer size overflow".to_string()))
+}
+
+#[cfg(test)]
+mod image_limit_tests {
+    use super::*;
+
+    #[test]
+    fn validates_normal_rgba_size() {
+        assert_eq!(validated_rgba_len(1920, 1080).unwrap(), 1920 * 1080 * 4);
+    }
+
+    #[test]
+    fn rejects_zero_and_excessive_dimensions() {
+        assert!(validated_rgba_len(0, 1080).is_err());
+        assert!(validated_rgba_len(MAX_IMAGE_DIMENSION + 1, 1).is_err());
+    }
+
+    #[test]
+    fn rejects_pixel_counts_that_used_to_wrap_u32() {
+        assert!(validated_rgba_len(65_536, 65_536).is_err());
+    }
+}
 use crate::model::LlamaModel;
 
 /// Parameters for multimodal context
@@ -522,7 +581,7 @@ impl MultimodalContext {
             rgba_data.len()
         );
 
-        let expected_size = (width * height * 4) as usize;
+        let expected_size = validated_rgba_len(width, height)?;
         if rgba_data.len() != expected_size {
             return Err(ForgeError::ImageProcessingFailed(format!(
                 "Expected {} bytes for {}x{} RGBA, got {}",
@@ -541,8 +600,11 @@ impl MultimodalContext {
         );
 
         // Convert RGBA to RGB (mtmd_bitmap_init expects RGB, not RGBA!)
-        let pixel_count = (width * height) as usize;
-        let mut rgb_data = Vec::with_capacity(pixel_count * 3);
+        let pixel_count = validated_pixel_count(width, height)?;
+        let rgb_capacity = pixel_count.checked_mul(3).ok_or_else(|| {
+            ForgeError::ImageProcessingFailed("RGB buffer size overflow".to_string())
+        })?;
+        let mut rgb_data = Vec::with_capacity(rgb_capacity);
         for i in 0..pixel_count {
             rgb_data.push(rgba_data[i * 4]); // R
             rgb_data.push(rgba_data[i * 4 + 1]); // G

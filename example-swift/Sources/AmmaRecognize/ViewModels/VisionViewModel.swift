@@ -1,6 +1,7 @@
 import SwiftUI
 import ForgeSwift
 import Combine
+import CryptoKit
 import Foundation
 import PDFKit
 import Darwin
@@ -61,28 +62,36 @@ final class VisionViewModel: ObservableObject {
 
     private struct ModelFile {
         let repository: String
+        let revision: String
         let name: String
         let size: Int64
+        let sha256: String
 
         var downloadURL: String {
-            "https://huggingface.co/LiquidAI/\(repository)/resolve/main/\(name)?download=true"
+            "https://huggingface.co/LiquidAI/\(repository)/resolve/\(revision)/\(name)?download=true"
         }
     }
 
     private static let mobileModel = ModelFile(
         repository: "LFM2.5-VL-450M-GGUF",
+        revision: "6f15859c2de1583b6180a9bc56338342592b589a",
         name: "LFM2.5-VL-450M-Q4_K_M.gguf",
-        size: 229_313_568
+        size: 229_313_568,
+        sha256: "1093f1331319199bbcacdbd7ecc9aa6e5678db6b55073948d0f508be90c8ab68"
     )
     private static let mobileProjector = ModelFile(
         repository: "LFM2.5-VL-450M-GGUF",
+        revision: "6f15859c2de1583b6180a9bc56338342592b589a",
         name: "mmproj-LFM2.5-VL-450m-Q8_0.gguf",
-        size: 102_815_168
+        size: 102_815_168,
+        sha256: "ebfc428baa37efad8bae93864f914b2634a09009f91ad59f974fe1a1565d8561"
     )
     private static let desktopModel = ModelFile(
         repository: "LFM2.5-8B-A1B-GGUF",
+        revision: "dfd5fdcad7a1c0d31473fb4ca443b8befbacddf0",
         name: "LFM2.5-8B-A1B-Q4_K_M.gguf",
-        size: 5_155_564_768
+        size: 5_155_564_768,
+        sha256: "4923ec14f06b968b74d663e5949867d2d9c3bf13a20b8be1a9f9af39989b2bb0"
     )
 
     private var isRunningOnComputer: Bool {
@@ -150,7 +159,10 @@ final class VisionViewModel: ObservableObject {
     // MARK: - Chat Session Management
 
     private func loadSessions() {
-        if let data = UserDefaults.standard.data(forKey: "amma_rust_chat_sessions"),
+        let legacyKey = "amma_rust_chat_sessions"
+        let data = try? Data(contentsOf: sessionsFileURL)
+        let legacyData = UserDefaults.standard.data(forKey: legacyKey)
+        if let data = data ?? legacyData,
            let decoded = try? JSONDecoder().decode([ChatSession].self, from: data) {
             self.sessions = decoded.map { session in
                 var migrated = session
@@ -170,12 +182,14 @@ final class VisionViewModel: ObservableObject {
                 return migrated
             }
             saveSessions()
+            UserDefaults.standard.removeObject(forKey: legacyKey)
         }
     }
 
     private func saveSessions() {
         if let encoded = try? JSONEncoder().encode(sessions) {
-            UserDefaults.standard.set(encoded, forKey: "amma_rust_chat_sessions")
+            try? encoded.write(to: sessionsFileURL, options: [.atomic, .completeFileProtection])
+            protectPrivateFile(sessionsFileURL)
         }
     }
 
@@ -545,22 +559,40 @@ final class VisionViewModel: ObservableObject {
 
     private func ensureModel(_ model: ModelFile, in directory: URL, status: String) async throws -> URL {
         let destination = directory.appendingPathComponent(model.name)
+        let trustMarker = destination.appendingPathExtension("sha256")
         if FileManager.default.fileExists(atPath: destination.path) {
             let attributes = try FileManager.default.attributesOfItem(atPath: destination.path)
             let size = (attributes[.size] as? NSNumber)?.int64Value ?? 0
-            if size == model.size {
+            let marker = try? String(contentsOf: trustMarker, encoding: .utf8).trimmingCharacters(in: .whitespacesAndNewlines)
+            let digestMatches: Bool
+            if size != model.size {
+                digestMatches = false
+            } else if marker == model.sha256 {
+                digestMatches = true
+            } else {
+                digestMatches = try await Task.detached(priority: .utility) {
+                    try Self.sha256(of: destination) == model.sha256
+                }.value
+            }
+            if size == model.size && digestMatches {
+                if marker != model.sha256 {
+                    try model.sha256.write(to: trustMarker, atomically: true, encoding: .utf8)
+                }
+                excludeFromBackup(destination)
+                excludeFromBackup(trustMarker)
                 return destination
             }
             try FileManager.default.removeItem(at: destination)
+            try? FileManager.default.removeItem(at: trustMarker)
         }
 
         loadingStatus = status
-        try await downloadModel(from: model.downloadURL, to: destination, expectedSize: model.size)
+        try await downloadModel(model, to: destination)
         return destination
     }
 
-    private func downloadModel(from urlString: String, to destination: URL, expectedSize: Int64) async throws {
-        guard let url = URL(string: urlString) else {
+    private func downloadModel(_ model: ModelFile, to destination: URL) async throws {
+        guard let url = URL(string: model.downloadURL) else {
             throw NSError(domain: "VisionViewModel", code: -1, userInfo: [NSLocalizedDescriptionKey: "Invalid URL"])
         }
 
@@ -605,11 +637,21 @@ final class VisionViewModel: ObservableObject {
 
         let attributes = try FileManager.default.attributesOfItem(atPath: tempURL.path)
         let downloadedSize = (attributes[.size] as? NSNumber)?.int64Value ?? 0
-        guard downloadedSize == expectedSize else {
+        guard downloadedSize == model.size else {
             throw NSError(
                 domain: "VisionViewModel",
                 code: -3,
-                userInfo: [NSLocalizedDescriptionKey: "Incomplete download (\(downloadedSize) of \(expectedSize) bytes)"]
+                userInfo: [NSLocalizedDescriptionKey: "Incomplete download (\(downloadedSize) of \(model.size) bytes)"]
+            )
+        }
+        let actualSHA256 = try await Task.detached(priority: .utility) {
+            try Self.sha256(of: tempURL)
+        }.value
+        guard actualSHA256 == model.sha256 else {
+            throw NSError(
+                domain: "VisionViewModel",
+                code: -4,
+                userInfo: [NSLocalizedDescriptionKey: "Downloaded model failed SHA-256 verification"]
             )
         }
 
@@ -618,6 +660,20 @@ final class VisionViewModel: ObservableObject {
             try FileManager.default.removeItem(at: destination)
         }
         try FileManager.default.moveItem(at: tempURL, to: destination)
+        let trustMarker = destination.appendingPathExtension("sha256")
+        try model.sha256.write(to: trustMarker, atomically: true, encoding: .utf8)
+        excludeFromBackup(destination)
+        excludeFromBackup(trustMarker)
+    }
+
+    private nonisolated static func sha256(of url: URL) throws -> String {
+        let handle = try FileHandle(forReadingFrom: url)
+        defer { try? handle.close() }
+        var hasher = SHA256()
+        while let data = try handle.read(upToCount: 1024 * 1024), !data.isEmpty {
+            hasher.update(data: data)
+        }
+        return hasher.finalize().map { String(format: "%02x", $0) }.joined()
     }
 
     /// Internal delegate to track high-speed download progress
@@ -1037,20 +1093,55 @@ final class VisionViewModel: ObservableObject {
     // MARK: - Disk Storage Helpers
 
     private var imagesDirectory: URL {
-        let paths = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)
-        let documentsDirectory = paths[0]
-        let imagesDir = documentsDirectory.appendingPathComponent("chat_images", isDirectory: true)
+        let imagesDir = privateDataDirectory.appendingPathComponent("chat_images", isDirectory: true)
         if !FileManager.default.fileExists(atPath: imagesDir.path) {
-            try? FileManager.default.createDirectory(at: imagesDir, withIntermediateDirectories: true)
+            let documents = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+            let legacyImages = documents.appendingPathComponent("chat_images", isDirectory: true)
+            if FileManager.default.fileExists(atPath: legacyImages.path) {
+                try? FileManager.default.moveItem(at: legacyImages, to: imagesDir)
+            } else {
+                try? FileManager.default.createDirectory(at: imagesDir, withIntermediateDirectories: true)
+            }
         }
+        protectPrivateFile(imagesDir)
         return imagesDir
+    }
+
+    private var privateDataDirectory: URL {
+        let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+        let directory = base.appendingPathComponent("PrivateAssistantData", isDirectory: true)
+        if !FileManager.default.fileExists(atPath: directory.path) {
+            try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        }
+        protectPrivateFile(directory)
+        return directory
+    }
+
+    private var sessionsFileURL: URL {
+        privateDataDirectory.appendingPathComponent("chat_sessions.json")
+    }
+
+    private func excludeFromBackup(_ url: URL) {
+        var values = URLResourceValues()
+        values.isExcludedFromBackup = true
+        var mutableURL = url
+        try? mutableURL.setResourceValues(values)
+    }
+
+    private func protectPrivateFile(_ url: URL) {
+        excludeFromBackup(url)
+        try? FileManager.default.setAttributes(
+            [.protectionKey: FileProtectionType.completeUntilFirstUserAuthentication],
+            ofItemAtPath: url.path
+        )
     }
 
     private func saveImageToDisk(_ data: Data) -> String? {
         let filename = UUID().uuidString + ".jpg"
         let fileURL = imagesDirectory.appendingPathComponent(filename)
         do {
-            try data.write(to: fileURL)
+            try data.write(to: fileURL, options: [.atomic, .completeFileProtection])
+            protectPrivateFile(fileURL)
             return filename
         } catch {
             print("❌ Failed to save image to disk: \(error)")

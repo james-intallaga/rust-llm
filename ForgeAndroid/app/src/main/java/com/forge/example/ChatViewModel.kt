@@ -27,7 +27,7 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
 
         // Model configuration - update these paths to your models
         private const val MODEL_FILENAME = "LFM2-1.2B-Q4_0.gguf"
-        private const val MODEL_URL = "https://huggingface.co/LiquidAI/LFM2-1.2B-GGUF/resolve/main/LFM2-1.2B-Q4_0.gguf"
+        private const val MODEL_URL = "https://huggingface.co/LiquidAI/LFM2-1.2B-GGUF/resolve/5399e76c648f4eb8c053feb1ab747277dea5bf8b/LFM2-1.2B-Q4_0.gguf"
     }
 
     private var engine: ForgeEngine? = null

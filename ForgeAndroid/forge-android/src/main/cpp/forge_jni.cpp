@@ -6,6 +6,7 @@
  */
 
 #include <jni.h>
+#include <cmath>
 #include <string>
 #include <android/log.h>
 
@@ -19,13 +20,44 @@
 // JNI package prefix
 #define JNI_PREFIX Java_com_forge_sdk_ForgeNative_
 
-// Helper to convert jstring to C string
-static std::string jstring_to_string(JNIEnv *env, jstring jstr) {
-    if (jstr == nullptr) return "";
+namespace {
+constexpr jint kMaxContextTokens = 1'048'576;
+constexpr jint kMaxBatchTokens = 65'536;
+constexpr jint kMaxGeneratedTokens = 1'048'576;
+constexpr jint kMaxThreads = 1'024;
+constexpr jint kMaxTopK = 1'000'000;
+constexpr jint kMaxGpuLayers = 1'000'000;
+constexpr jsize kMaxEncodedImageBytes = 64 * 1024 * 1024;
+
+// Helper to convert jstring to a C++ string without dereferencing a null
+// pointer when the VM is reporting an allocation failure.
+static bool jstring_to_string(JNIEnv *env, jstring jstr, std::string *output) {
+    if (jstr == nullptr || output == nullptr) return false;
     const char *cstr = env->GetStringUTFChars(jstr, nullptr);
-    std::string result(cstr);
+    if (cstr == nullptr) return false;
+    output->assign(cstr);
     env->ReleaseStringUTFChars(jstr, cstr);
-    return result;
+    return !env->ExceptionCheck();
+}
+
+static bool valid_engine_params(
+        jint nCtx,
+        jint nBatch,
+        jint nThreads,
+        jint maxTokens,
+        jfloat temperature,
+        jint topK,
+        jfloat topP,
+        jint nGpuLayers
+) {
+    return nCtx > 0 && nCtx <= kMaxContextTokens &&
+           nBatch > 0 && nBatch <= kMaxBatchTokens &&
+           nThreads > 0 && nThreads <= kMaxThreads &&
+           maxTokens > 0 && maxTokens <= kMaxGeneratedTokens &&
+           std::isfinite(temperature) && temperature >= 0.0f && temperature <= 10.0f &&
+           topK >= 0 && topK <= kMaxTopK &&
+           std::isfinite(topP) && topP >= 0.0f && topP <= 1.0f &&
+           nGpuLayers >= -1 && nGpuLayers <= kMaxGpuLayers;
 }
 
 // Callback context for token streaming
@@ -33,6 +65,8 @@ struct TokenCallbackContext {
     JNIEnv *env;
     jobject callback;
     jmethodID methodId;
+    ForgeHandle handle;
+    bool failed;
 };
 
 // Token callback that forwards to Kotlin
@@ -40,10 +74,22 @@ static void token_callback_impl(const char *token, void *user_data) {
     auto *ctx = static_cast<TokenCallbackContext *>(user_data);
     if (ctx == nullptr || ctx->callback == nullptr) return;
 
+    if (token == nullptr || ctx->failed) return;
     jstring jtoken = ctx->env->NewStringUTF(token);
+    if (jtoken == nullptr) {
+        ctx->failed = true;
+        forge_cancel(ctx->handle);
+        return;
+    }
     ctx->env->CallVoidMethod(ctx->callback, ctx->methodId, jtoken);
     ctx->env->DeleteLocalRef(jtoken);
+    if (ctx->env->ExceptionCheck()) {
+        ctx->env->ExceptionClear();
+        ctx->failed = true;
+        forge_cancel(ctx->handle);
+    }
 }
+}  // namespace
 
 extern "C" {
 
@@ -82,7 +128,13 @@ Java_com_forge_sdk_ForgeNative_engineCreate(
         jboolean flashAttn,
         jint nGpuLayers
 ) {
-    std::string path = jstring_to_string(env, modelPath);
+    if (!valid_engine_params(nCtx, nBatch, nThreads, maxTokens, temperature, topK, topP,
+                             nGpuLayers)) {
+        LOGE("Rejected invalid engine parameters");
+        return 0;
+    }
+    std::string path;
+    if (!jstring_to_string(env, modelPath, &path) || path.empty()) return 0;
     LOGI("Creating engine with model: %s", path.c_str());
 
     ForgeParams params = forge_params_default();
@@ -122,8 +174,15 @@ Java_com_forge_sdk_ForgeNative_engineCreateVision(
         jboolean flashAttn,
         jint nGpuLayers
 ) {
-    std::string model = jstring_to_string(env, modelPath);
-    std::string clip = jstring_to_string(env, clipPath);
+    if (!valid_engine_params(nCtx, nBatch, nThreads, maxTokens, temperature, topK, topP,
+                             nGpuLayers)) {
+        LOGE("Rejected invalid vision engine parameters");
+        return 0;
+    }
+    std::string model;
+    std::string clip;
+    if (!jstring_to_string(env, modelPath, &model) || model.empty() ||
+        !jstring_to_string(env, clipPath, &clip) || clip.empty()) return 0;
     LOGI("Creating vision engine with model: %s, clip: %s", model.c_str(), clip.c_str());
 
     ForgeParams params = forge_params_default();
@@ -172,28 +231,33 @@ Java_com_forge_sdk_ForgeNative_generate(
         jstring prompt,
         jobject callback
 ) {
-    if (handle == 0) return ForgeResult_NullPointer;
+    if (handle == 0 || prompt == nullptr || callback == nullptr) return ForgeResult_NullPointer;
 
-    std::string promptStr = jstring_to_string(env, prompt);
+    std::string promptStr;
+    if (!jstring_to_string(env, prompt, &promptStr)) return ForgeResult_InvalidParameter;
 
     // Get callback method
     jclass callbackClass = env->GetObjectClass(callback);
+    if (callbackClass == nullptr) return ForgeResult_InvalidParameter;
     jmethodID methodId = env->GetMethodID(callbackClass, "onToken", "(Ljava/lang/String;)V");
     if (methodId == nullptr) {
+        env->DeleteLocalRef(callbackClass);
         LOGE("Could not find onToken method");
         return ForgeResult_InvalidParameter;
     }
 
-    TokenCallbackContext ctx = {env, callback, methodId};
+    auto forgeHandle = reinterpret_cast<ForgeHandle>(handle);
+    TokenCallbackContext ctx = {env, callback, methodId, forgeHandle, false};
 
     ForgeResult result = forge_generate(
-            reinterpret_cast<ForgeHandle>(handle),
+            forgeHandle,
             promptStr.c_str(),
             token_callback_impl,
             &ctx
     );
+    env->DeleteLocalRef(callbackClass);
 
-    return static_cast<jint>(result);
+    return ctx.failed ? ForgeResult_InvalidParameter : static_cast<jint>(result);
 }
 
 JNIEXPORT jint JNICALL
@@ -205,28 +269,33 @@ Java_com_forge_sdk_ForgeNative_generateTurn(
         jboolean addBos,
         jobject callback
 ) {
-    if (handle == 0) return ForgeResult_NullPointer;
+    if (handle == 0 || prompt == nullptr || callback == nullptr) return ForgeResult_NullPointer;
 
-    std::string promptStr = jstring_to_string(env, prompt);
+    std::string promptStr;
+    if (!jstring_to_string(env, prompt, &promptStr)) return ForgeResult_InvalidParameter;
 
     jclass callbackClass = env->GetObjectClass(callback);
+    if (callbackClass == nullptr) return ForgeResult_InvalidParameter;
     jmethodID methodId = env->GetMethodID(callbackClass, "onToken", "(Ljava/lang/String;)V");
     if (methodId == nullptr) {
+        env->DeleteLocalRef(callbackClass);
         LOGE("Could not find onToken method");
         return ForgeResult_InvalidParameter;
     }
 
-    TokenCallbackContext ctx = {env, callback, methodId};
+    auto forgeHandle = reinterpret_cast<ForgeHandle>(handle);
+    TokenCallbackContext ctx = {env, callback, methodId, forgeHandle, false};
 
     ForgeResult result = forge_generate_turn(
-            reinterpret_cast<ForgeHandle>(handle),
+            forgeHandle,
             promptStr.c_str(),
             addBos,
             token_callback_impl,
             &ctx
     );
+    env->DeleteLocalRef(callbackClass);
 
-    return static_cast<jint>(result);
+    return ctx.failed ? ForgeResult_InvalidParameter : static_cast<jint>(result);
 }
 
 JNIEXPORT jint JNICALL
@@ -238,26 +307,37 @@ Java_com_forge_sdk_ForgeNative_generateVision(
         jstring prompt,
         jobject callback
 ) {
-    if (handle == 0) return ForgeResult_NullPointer;
+    if (handle == 0 || imageData == nullptr || prompt == nullptr || callback == nullptr) {
+        return ForgeResult_NullPointer;
+    }
 
-    std::string promptStr = jstring_to_string(env, prompt);
+    std::string promptStr;
+    if (!jstring_to_string(env, prompt, &promptStr)) return ForgeResult_InvalidParameter;
 
     // Get image bytes
     jsize imageLen = env->GetArrayLength(imageData);
+    if (imageLen <= 0 || imageLen > kMaxEncodedImageBytes) return ForgeResult_InvalidParameter;
     jbyte *imageBytes = env->GetByteArrayElements(imageData, nullptr);
+    if (imageBytes == nullptr) return ForgeResult_MemoryExceeded;
 
     jclass callbackClass = env->GetObjectClass(callback);
+    if (callbackClass == nullptr) {
+        env->ReleaseByteArrayElements(imageData, imageBytes, JNI_ABORT);
+        return ForgeResult_InvalidParameter;
+    }
     jmethodID methodId = env->GetMethodID(callbackClass, "onToken", "(Ljava/lang/String;)V");
     if (methodId == nullptr) {
         env->ReleaseByteArrayElements(imageData, imageBytes, JNI_ABORT);
+        env->DeleteLocalRef(callbackClass);
         LOGE("Could not find onToken method");
         return ForgeResult_InvalidParameter;
     }
 
-    TokenCallbackContext ctx = {env, callback, methodId};
+    auto forgeHandle = reinterpret_cast<ForgeHandle>(handle);
+    TokenCallbackContext ctx = {env, callback, methodId, forgeHandle, false};
 
     ForgeResult result = forge_generate_vision(
-            reinterpret_cast<ForgeHandle>(handle),
+            forgeHandle,
             reinterpret_cast<const uint8_t *>(imageBytes),
             static_cast<size_t>(imageLen),
             promptStr.c_str(),
@@ -266,8 +346,9 @@ Java_com_forge_sdk_ForgeNative_generateVision(
     );
 
     env->ReleaseByteArrayElements(imageData, imageBytes, JNI_ABORT);
+    env->DeleteLocalRef(callbackClass);
 
-    return static_cast<jint>(result);
+    return ctx.failed ? ForgeResult_InvalidParameter : static_cast<jint>(result);
 }
 
 // ============================================================

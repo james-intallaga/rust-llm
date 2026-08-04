@@ -16,6 +16,17 @@ use std::sync::{Arc, Mutex, MutexGuard};
 
 use crate::engine::{ForgeConfig, ForgeEngine};
 
+const MAX_CONTEXT_TOKENS: u32 = 1_048_576;
+const MAX_BATCH_TOKENS: u32 = 65_536;
+const MAX_GENERATED_TOKENS: u32 = 1_048_576;
+const MAX_THREADS: i32 = 1_024;
+const MAX_TOP_K: i32 = 1_000_000;
+const MAX_GPU_LAYERS: i32 = 1_000_000;
+const MAX_TEMPERATURE: f32 = 10.0;
+const MAX_ENCODED_IMAGE_BYTES: usize = 64 * 1024 * 1024;
+const MAX_AUDIO_EMBEDDING_VALUES: usize = 1_048_576;
+const MAX_AUDIO_SAMPLES: usize = 48_000 * 60 * 10;
+
 /// Opaque type for the Forge engine (C representation)
 /// This is never constructed directly - only through pointers
 #[repr(C)]
@@ -194,15 +205,41 @@ impl From<ForgeParams> for ForgeConfig {
 
 impl ForgeParams {
     fn validate(self) -> bool {
-        self.n_ctx > 0
-            && self.n_batch > 0
-            && self.n_threads > 0
-            && self.max_tokens > 0
+        (1..=MAX_CONTEXT_TOKENS).contains(&self.n_ctx)
+            && (1..=MAX_BATCH_TOKENS).contains(&self.n_batch)
+            && (1..=MAX_THREADS).contains(&self.n_threads)
+            && (1..=MAX_GENERATED_TOKENS).contains(&self.max_tokens)
             && self.temperature.is_finite()
-            && self.temperature >= 0.0
-            && self.top_k >= 0
+            && (0.0..=MAX_TEMPERATURE).contains(&self.temperature)
+            && (0..=MAX_TOP_K).contains(&self.top_k)
             && self.top_p.is_finite()
             && (0.0..=1.0).contains(&self.top_p)
+            && (-1..=MAX_GPU_LAYERS).contains(&self.n_gpu_layers)
+    }
+}
+
+#[cfg(test)]
+mod parameter_validation_tests {
+    use super::*;
+
+    #[test]
+    fn defaults_are_valid() {
+        assert!(ForgeParams::default().validate());
+    }
+
+    #[test]
+    fn rejects_values_that_would_wrap_or_exhaust_resources() {
+        let params = ForgeParams {
+            n_batch: u32::MAX,
+            ..ForgeParams::default()
+        };
+        assert!(!params.validate());
+
+        let params = ForgeParams {
+            temperature: f32::NAN,
+            ..ForgeParams::default()
+        };
+        assert!(!params.validate());
     }
 }
 
@@ -575,6 +612,9 @@ pub extern "C" fn forge_generate_vision(
     if image_data.is_null() || prompt.is_null() {
         return ForgeResult::NullPointer;
     }
+    if image_len == 0 || image_len > MAX_ENCODED_IMAGE_BYTES {
+        return ForgeResult::InvalidParameter;
+    }
 
     let mut engine = match unsafe { ForgeEngineOpaque::as_engine_mut(engine) } {
         Some(e) => e,
@@ -628,6 +668,14 @@ pub extern "C" fn forge_generate_vision_rgba(
 ) -> ForgeResult {
     if rgba_data.is_null() || prompt.is_null() {
         return ForgeResult::NullPointer;
+    }
+
+    let expected_len = match crate::encoders::mtmd_encoder::validated_rgba_len(width, height) {
+        Ok(len) => len,
+        Err(_) => return ForgeResult::InvalidParameter,
+    };
+    if rgba_len != expected_len {
+        return ForgeResult::InvalidParameter;
     }
 
     let mut engine = match unsafe { ForgeEngineOpaque::as_engine_mut(engine) } {
@@ -849,6 +897,9 @@ pub extern "C" fn forge_audio_decoder_process(
     if embeddings.is_null() || output.is_null() || samples_written.is_null() {
         return ForgeResult::NullPointer;
     }
+    if embedding_len == 0 || embedding_len > MAX_AUDIO_EMBEDDING_VALUES {
+        return ForgeResult::InvalidParameter;
+    }
 
     let decoder = match unsafe { ForgeAudioDecoderOpaque::as_decoder_mut(decoder) } {
         Some(d) => d,
@@ -1016,6 +1067,9 @@ pub extern "C" fn forge_generate_audio(
 ) -> ForgeResult {
     if samples.is_null() || prompt.is_null() {
         return ForgeResult::NullPointer;
+    }
+    if n_samples == 0 || n_samples > MAX_AUDIO_SAMPLES {
+        return ForgeResult::InvalidParameter;
     }
 
     let mut engine = match unsafe { ForgeEngineOpaque::as_engine_mut(engine) } {

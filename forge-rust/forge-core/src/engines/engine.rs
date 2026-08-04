@@ -570,13 +570,44 @@ impl ForgeEngine {
     where
         F: FnMut(&str),
     {
-        use image::GenericImageView;
+        use crate::encoders::mtmd_encoder::{MAX_IMAGE_DIMENSION, MAX_IMAGE_PIXELS};
+        use image::{io::Limits, io::Reader as ImageReader, GenericImageView};
+        use std::io::Cursor;
 
-        let img = image::load_from_memory(image_data).map_err(|e| {
+        const MAX_ENCODED_IMAGE_BYTES: usize = 64 * 1024 * 1024;
+        const MAX_DECODER_ALLOCATION_BYTES: u64 = 256 * 1024 * 1024;
+
+        if image_data.is_empty() || image_data.len() > MAX_ENCODED_IMAGE_BYTES {
+            return Err(ForgeError::ImageProcessingFailed(format!(
+                "Encoded image size must be between 1 byte and {} MiB",
+                MAX_ENCODED_IMAGE_BYTES / (1024 * 1024)
+            )));
+        }
+
+        let mut reader = ImageReader::new(Cursor::new(image_data))
+            .with_guessed_format()
+            .map_err(|e| {
+                ForgeError::ImageProcessingFailed(format!("Failed to inspect image: {e}"))
+            })?;
+        let mut limits = Limits::default();
+        limits.max_image_width = Some(MAX_IMAGE_DIMENSION);
+        limits.max_image_height = Some(MAX_IMAGE_DIMENSION);
+        limits.max_alloc = Some(MAX_DECODER_ALLOCATION_BYTES);
+        reader.limits(limits);
+
+        let img = reader.decode().map_err(|e| {
             ForgeError::ImageProcessingFailed(format!("Failed to decode image: {}", e))
         })?;
 
         let (width, height) = img.dimensions();
+        let pixels = u64::from(width)
+            .checked_mul(u64::from(height))
+            .ok_or_else(|| ForgeError::ImageProcessingFailed("Image size overflow".to_string()))?;
+        if pixels > MAX_IMAGE_PIXELS {
+            return Err(ForgeError::ImageProcessingFailed(format!(
+                "Image contains {pixels} pixels; the limit is {MAX_IMAGE_PIXELS}"
+            )));
+        }
         let rgba_data = img.to_rgba8().into_raw();
 
         self.generate_vision_rgba(width, height, &rgba_data, prompt, callback)

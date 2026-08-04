@@ -7,7 +7,6 @@ import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.Closeable
-import java.util.concurrent.atomic.AtomicLong
 
 /**
  * The main inference engine.
@@ -30,10 +29,39 @@ import java.util.concurrent.atomic.AtomicLong
 class ForgeEngine private constructor(
     handle: Long
 ) : Closeable {
-    private val nativeHandle = AtomicLong(handle)
+    private val lifecycleMonitor = Object()
+    private var nativeHandle: Long = handle
+    private var activeOperations = 0
+    private var closing = false
 
-    private fun requireHandle(): Long = nativeHandle.get().takeIf { it != 0L }
-        ?: throw IllegalStateException("ForgeEngine is closed")
+    private fun acquireHandle(): Long = synchronized(lifecycleMonitor) {
+        check(!closing && nativeHandle != 0L) { "ForgeEngine is closed" }
+        activeOperations += 1
+        nativeHandle
+    }
+
+    private fun releaseHandle() = synchronized(lifecycleMonitor) {
+        check(activeOperations > 0) { "Unbalanced native operation" }
+        activeOperations -= 1
+        if (activeOperations == 0) {
+            lifecycleMonitor.notifyAll()
+        }
+    }
+
+    private inline fun <T> withHandle(block: (Long) -> T): T {
+        val handle = acquireHandle()
+        return try {
+            block(handle)
+        } finally {
+            releaseHandle()
+        }
+    }
+
+    private fun requestCancellation() = synchronized(lifecycleMonitor) {
+        if (nativeHandle != 0L) {
+            ForgeNative.cancel(nativeHandle)
+        }
+    }
 
     companion object {
         private var initialized = false
@@ -61,6 +89,7 @@ class ForgeEngine private constructor(
             config: ForgeConfiguration = ForgeConfiguration()
         ): ForgeEngine = withContext(Dispatchers.IO) {
             initialize()
+            config.validate()
 
             val handle = ForgeNative.engineCreate(
                 modelPath,
@@ -97,6 +126,7 @@ class ForgeEngine private constructor(
             config: ForgeConfiguration = ForgeConfiguration()
         ): ForgeEngine = withContext(Dispatchers.IO) {
             initialize()
+            config.validate()
 
             val handle = ForgeNative.engineCreateVision(
                 modelPath,
@@ -142,25 +172,25 @@ class ForgeEngine private constructor(
      * Check if this is the first turn (context is empty).
      */
     val isFirstTurn: Boolean
-        get() = ForgeNative.isFirstTurn(requireHandle())
+        get() = withHandle(ForgeNative::isFirstTurn)
 
     /**
      * Get the current context position (tokens processed so far).
      */
     val tokensProcessed: Int
-        get() = ForgeNative.nPast(requireHandle())
+        get() = withHandle(ForgeNative::nPast)
 
     /**
      * Get current memory usage in MB.
      */
     val currentMemoryMB: Double
-        get() = ForgeNative.memoryCurrentMb(requireHandle())
+        get() = withHandle(ForgeNative::memoryCurrentMb)
 
     /**
      * Get peak memory usage in MB.
      */
     val peakMemoryMB: Double
-        get() = ForgeNative.memoryPeakMb(requireHandle())
+        get() = withHandle(ForgeNative::memoryPeakMb)
 
     /**
      * Generate text from a prompt (single-turn, clears context).
@@ -169,8 +199,8 @@ class ForgeEngine private constructor(
      * @return Flow of generated tokens
      */
     fun generateStream(prompt: String): Flow<String> = callbackFlow {
-        val handle = requireHandle()
-        launch(Dispatchers.IO) {
+        val handle = acquireHandle()
+        val operation = launch(Dispatchers.IO) {
             val result = ForgeNative.generate(handle, prompt, object : TokenCallback {
                 override fun onToken(token: String) {
                     trySend(token)
@@ -181,8 +211,12 @@ class ForgeEngine private constructor(
                 close(error)
             } ?: close()
         }
+        operation.invokeOnCompletion { releaseHandle() }
 
-        awaitClose { ForgeNative.cancel(handle) }
+        awaitClose {
+            requestCancellation()
+            operation.cancel()
+        }
     }
 
     /**
@@ -193,8 +227,8 @@ class ForgeEngine private constructor(
      * @return Flow of generated tokens
      */
     fun generateTurnStream(prompt: String, addBOS: Boolean): Flow<String> = callbackFlow {
-        val handle = requireHandle()
-        launch(Dispatchers.IO) {
+        val handle = acquireHandle()
+        val operation = launch(Dispatchers.IO) {
             val result = ForgeNative.generateTurn(handle, prompt, addBOS, object : TokenCallback {
                 override fun onToken(token: String) {
                     trySend(token)
@@ -205,8 +239,12 @@ class ForgeEngine private constructor(
                 close(error)
             } ?: close()
         }
+        operation.invokeOnCompletion { releaseHandle() }
 
-        awaitClose { ForgeNative.cancel(handle) }
+        awaitClose {
+            requestCancellation()
+            operation.cancel()
+        }
     }
 
     /**
@@ -217,8 +255,10 @@ class ForgeEngine private constructor(
      * @return Flow of generated tokens
      */
     fun generateVisionStream(imageData: ByteArray, prompt: String): Flow<String> = callbackFlow {
-        val handle = requireHandle()
-        launch(Dispatchers.IO) {
+        require(imageData.isNotEmpty()) { "imageData must not be empty" }
+        require(imageData.size <= 64 * 1024 * 1024) { "imageData must not exceed 64 MiB" }
+        val handle = acquireHandle()
+        val operation = launch(Dispatchers.IO) {
             val result = ForgeNative.generateVision(handle, imageData, prompt, object : TokenCallback {
                 override fun onToken(token: String) {
                     trySend(token)
@@ -229,8 +269,12 @@ class ForgeEngine private constructor(
                 close(error)
             } ?: close()
         }
+        operation.invokeOnCompletion { releaseHandle() }
 
-        awaitClose { ForgeNative.cancel(handle) }
+        awaitClose {
+            requestCancellation()
+            operation.cancel()
+        }
     }
 
     /**
@@ -238,7 +282,7 @@ class ForgeEngine private constructor(
      */
     @Throws(ForgeError::class)
     suspend fun reset() = withContext(Dispatchers.IO) {
-        val result = ForgeNative.reset(requireHandle())
+        val result = withHandle(ForgeNative::reset)
         ForgeError.fromResult(result)?.let { throw it }
     }
 
@@ -246,10 +290,26 @@ class ForgeEngine private constructor(
      * Close and release all resources.
      */
     override fun close() {
-        val handle = nativeHandle.getAndSet(0L)
-        if (handle != 0L) {
-            ForgeNative.cancel(handle)
-            ForgeNative.engineDestroy(handle)
+        var interrupted = false
+        val handle = synchronized(lifecycleMonitor) {
+            if (closing || nativeHandle == 0L) {
+                return
+            }
+            closing = true
+            ForgeNative.cancel(nativeHandle)
+            while (activeOperations > 0) {
+                try {
+                    lifecycleMonitor.wait()
+                } catch (_: InterruptedException) {
+                    interrupted = true
+                }
+            }
+            nativeHandle.also { nativeHandle = 0L }
+        }
+
+        ForgeNative.engineDestroy(handle)
+        if (interrupted) {
+            Thread.currentThread().interrupt()
         }
     }
 }
