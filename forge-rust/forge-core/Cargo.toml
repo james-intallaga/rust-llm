@@ -1,0 +1,27 @@
+[package]
+name = "forge-core"
+description = "Safe Rust wrapper for llama.cpp with RAII memory management"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[lib]
+name = "forge_core"
+crate-type = ["staticlib", "cdylib", "lib"]
+
+[dependencies]
+llama-cpp-sys = { workspace = true }
+image = { workspace = true }
+rustfft = { workspace = true }
+libc = { workspace = true }
+thiserror = { workspace = true }
+log = { workspace = true }
+seahash = { workspace = true }
+
+[dev-dependencies]
+dirs = "5.0"
+
+[build-dependencies]
+cbindgen = { workspace = true }

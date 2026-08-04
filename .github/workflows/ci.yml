@@ -1,0 +1,59 @@
+name: Verify
+
+permissions:
+  contents: read
+
+concurrency:
+  group: verify-${{ github.ref }}
+  cancel-in-progress: true
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  rust-and-docs:
+    runs-on: macos-14
+    env:
+      CARGO_BUILD_WARNINGS: deny
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - run: ./scripts/check-release.sh
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: 1.97.0
+          components: rustfmt, clippy
+      - run: ./build-xcframework.sh
+      - run: cargo fmt --all --check
+        working-directory: forge-rust
+      - run: cargo clippy --workspace --all-targets -- -D warnings
+        working-directory: forge-rust
+      - run: cargo test --workspace --all-targets --no-fail-fast
+        working-directory: forge-rust
+      - run: python3 -m pip install 'mkdocs==1.6.1' 'mkdocs-material==9.6.14'
+      - run: python3 -m mkdocs build --strict
+
+  android:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: android-actions/setup-android@v3
+      - run: sdkmanager "platforms;android-34" "build-tools;34.0.0" "cmake;3.22.1" "ndk;27.0.12077973"
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: 1.97.0
+          targets: aarch64-linux-android,x86_64-linux-android
+      - run: cargo install cargo-ndk --version 4.1.2 --locked
+      - run: ./forge-rust/scripts/build-android.sh
+        env:
+          ANDROID_NDK_HOME: ${{ env.ANDROID_HOME }}/ndk/27.0.12077973
+      - run: ./gradlew --no-daemon :app:assembleDebug
+        working-directory: example-android

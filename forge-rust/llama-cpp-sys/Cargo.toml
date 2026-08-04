@@ -1,0 +1,24 @@
+[package]
+name = "llama-cpp-sys"
+description = "Low-level FFI bindings to llama.cpp C API"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[lib]
+name = "llama_cpp_sys"
+crate-type = ["lib"]
+
+[features]
+# Use bindgen-generated bindings instead of stubs
+# Enabled by default on macOS, disabled for iOS cross-compilation
+generate = []
+default = ["generate"]
+
+[dependencies]
+libc = { workspace = true }
+
+[build-dependencies]
+bindgen = { workspace = true }
