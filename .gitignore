@@ -88,4 +88,5 @@ llama.cpp/build-android-*/
 *.safetensors
 *.onnx
 *.mlmodelc/
+.venv-docs/
 site/
