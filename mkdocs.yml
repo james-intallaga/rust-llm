@@ -1,0 +1,87 @@
+site_name: Forge SDK Documentation
+site_description: On-device AI inference framework for Apple platforms
+site_author: Amma Forge Team
+
+theme:
+  name: material
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.expand
+    - navigation.top
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+
+nav:
+  - Introduction: developer/index.md
+  - Getting Started:
+    - Installation: developer/installation.md
+    - Quick Start: developer/quick-start.md
+    - Recommended Models: troubleshooting-and-todos/recommended-models.md
+    - Models & Devices: troubleshooting-and-todos/models_devices.md
+    - Downloading Models: developer/downloading-models.md
+  - Masterclass Tutorial:
+    - Overview: tutorial/00-index.md
+    - 01. llama.cpp Fundamentals: tutorial/01-llama-cpp-fundamentals.md
+    - 02. GGUF Models: tutorial/02-gguf-models.md
+    - 03. Tokenization: tutorial/03-tokenization.md
+    - 04. Context & Memory: tutorial/04-context-memory.md
+    - 05. Sampling & Generation: tutorial/05-sampling-generation.md
+    - 06. Chat Templates: tutorial/06-chat-templates.md
+    - 07. Swift Wrapper Arch: tutorial/07-swift-wrapper-architecture.md
+    - 08. Forge SDK Deep Dive: tutorial/08-forge-sdk-deep-dive.md
+    - 09. Multimodal & Vision: tutorial/09-multimodal-vision.md
+    - 10. Performance Optimization: tutorial/10-performance-optimization.md
+    - 11. Troubleshooting: troubleshooting-and-todos/11-troubleshooting-debugging.md
+  - Model Tuning:
+    - Tuning Guide: troubleshooting-and-todos/model-tuning-guide.md
+    - Quick Reference: troubleshooting-and-todos/model-tuning-quick-reference.md
+  - Guides:
+    - Configuration: developer/configuration.md
+    - Multimodal (Vision): developer/multimodal.md
+    - Advanced Pipelines: developer/advanced-pipelines.md
+    - Performance Tuning: developer/performance-tuning.md
+    - Function Calling: developer/function-calling.md
+    - RAG (Local Knowledge): developer/rag.md
+  - Reference:
+    - API Reference: developer/api-reference.md
+    - Model Settings: developer/model-settings.md
+    - Prompt Formats: troubleshooting-and-todos/prompt_format.md
+    - Shortcuts: troubleshooting-and-todos/shortcuts.md
+    - Troubleshooting: developer/troubleshooting.md
+    - Building from Source: developer/building-from-source.md
+    - Upstream Compatibility: developer/upstream-compatibility.md
+  - Troubleshooting:
+    - Performance & Quality: troubleshooting-and-todos/performance-quality-issues.md
+    - Multimodal Issues: troubleshooting-and-todos/multimodal-issues.md
+  - Archive:
+    - Inference Options: troubleshooting-and-todos/inference_options.md
+    - LoRA Adapters: troubleshooting-and-todos/lora.md
+    - Models: troubleshooting-and-todos/models.md
+    - Save/Load State: troubleshooting-and-todos/save_load_state.md
+
+markdown_extensions:
+  - admonition
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true

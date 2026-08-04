@@ -1,0 +1,378 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 63;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		07F14169D91E40EC9D619163 /* AmmaRecognizeApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = D9B80D00AC75C0BA0E4B72D7 /* AmmaRecognizeApp.swift */; };
+		43F66FA82E57F88FE485D910 /* VisionViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 102990184EC554E21353826C /* VisionViewModel.swift */; };
+		4EAD9267EFA6FD7B5EA05E79 /* SpeechRecognizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8FB39ADA4EBD4DB763723D1E /* SpeechRecognizer.swift */; };
+		4F3BC4C45F1F00E2262D1ED6 /* ForgeSwift in Frameworks */ = {isa = PBXBuildFile; productRef = 62B205B62F9516B87670D758 /* ForgeSwift */; };
+		8F7250CB711AE21DA9D7CA97 /* DocumentProcessor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0682C4E973620A577F28D6D1 /* DocumentProcessor.swift */; };
+		C7F3A7384186F8A66FE253EC /* MainView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 77D188126E30E8692971F322 /* MainView.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		02FF485DC9E9B2CD4C41E6BC /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		0682C4E973620A577F28D6D1 /* DocumentProcessor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DocumentProcessor.swift; sourceTree = "<group>"; };
+		102990184EC554E21353826C /* VisionViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VisionViewModel.swift; sourceTree = "<group>"; };
+		77D188126E30E8692971F322 /* MainView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainView.swift; sourceTree = "<group>"; };
+		8FB39ADA4EBD4DB763723D1E /* SpeechRecognizer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpeechRecognizer.swift; sourceTree = "<group>"; };
+		A3FB58020116817BE881770D /* AmmaRecognize-Rust.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "AmmaRecognize-Rust.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		D9B80D00AC75C0BA0E4B72D7 /* AmmaRecognizeApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AmmaRecognizeApp.swift; sourceTree = "<group>"; };
+		DC9BDE65E1DC08E1387DF1AE /* ForgeSwift */ = {isa = PBXFileReference; lastKnownFileType = folder; name = ForgeSwift; path = ../ForgeSwift; sourceTree = SOURCE_ROOT; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		F5A26000C0C891E66A168EBA /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				4F3BC4C45F1F00E2262D1ED6 /* ForgeSwift in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		011D131D00A6848D2D3DD001 /* Models */ = {
+			isa = PBXGroup;
+			children = (
+				0682C4E973620A577F28D6D1 /* DocumentProcessor.swift */,
+				8FB39ADA4EBD4DB763723D1E /* SpeechRecognizer.swift */,
+			);
+			path = Models;
+			sourceTree = "<group>";
+		};
+		0B5EC93F6B4369B3FAD6D460 /* AmmaRecognize */ = {
+			isa = PBXGroup;
+			children = (
+				D9B80D00AC75C0BA0E4B72D7 /* AmmaRecognizeApp.swift */,
+				011D131D00A6848D2D3DD001 /* Models */,
+				7C925D9EDCAAAE51CAE2594E /* ViewModels */,
+				9B52D71BF6AED20EEB2CDCA2 /* Views */,
+			);
+			path = AmmaRecognize;
+			sourceTree = "<group>";
+		};
+		7C925D9EDCAAAE51CAE2594E /* ViewModels */ = {
+			isa = PBXGroup;
+			children = (
+				102990184EC554E21353826C /* VisionViewModel.swift */,
+			);
+			path = ViewModels;
+			sourceTree = "<group>";
+		};
+		7FC08D29AE3B0BB1CCE4672B /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				A3FB58020116817BE881770D /* AmmaRecognize-Rust.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		8AF46C7F1FD95140BB85A38D /* Sources */ = {
+			isa = PBXGroup;
+			children = (
+				02FF485DC9E9B2CD4C41E6BC /* Info.plist */,
+				0B5EC93F6B4369B3FAD6D460 /* AmmaRecognize */,
+			);
+			path = Sources;
+			sourceTree = "<group>";
+		};
+		976927FFAEF58444F7A51373 /* Packages */ = {
+			isa = PBXGroup;
+			children = (
+				DC9BDE65E1DC08E1387DF1AE /* ForgeSwift */,
+			);
+			name = Packages;
+			sourceTree = "<group>";
+		};
+		9B52D71BF6AED20EEB2CDCA2 /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				77D188126E30E8692971F322 /* MainView.swift */,
+			);
+			path = Views;
+			sourceTree = "<group>";
+		};
+		FE7A1E467E6314910FDC8293 = {
+			isa = PBXGroup;
+			children = (
+				976927FFAEF58444F7A51373 /* Packages */,
+				8AF46C7F1FD95140BB85A38D /* Sources */,
+				7FC08D29AE3B0BB1CCE4672B /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		FB4D4FA0DA4A34C42A451C06 /* AmmaRecognize-Rust */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 64000366E7F036D25228E122 /* Build configuration list for PBXNativeTarget "AmmaRecognize-Rust" */;
+			buildPhases = (
+				B3E4232DCB502A3CAE29E5B7 /* Sources */,
+				F5A26000C0C891E66A168EBA /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = "AmmaRecognize-Rust";
+			packageProductDependencies = (
+				62B205B62F9516B87670D758 /* ForgeSwift */,
+			);
+			productName = "AmmaRecognize-Rust";
+			productReference = A3FB58020116817BE881770D /* AmmaRecognize-Rust.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		84D9131A057BB43F8660B162 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1430;
+			};
+			buildConfigurationList = 7A43102F9D877406CE66C9BB /* Build configuration list for PBXProject "AmmaRecognize-Rust" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = FE7A1E467E6314910FDC8293;
+			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				EAD217F85E902A168F44A443 /* XCLocalSwiftPackageReference "../ForgeSwift" */,
+			);
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				FB4D4FA0DA4A34C42A451C06 /* AmmaRecognize-Rust */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXSourcesBuildPhase section */
+		B3E4232DCB502A3CAE29E5B7 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				07F14169D91E40EC9D619163 /* AmmaRecognizeApp.swift in Sources */,
+				8F7250CB711AE21DA9D7CA97 /* DocumentProcessor.swift in Sources */,
+				C7F3A7384186F8A66FE253EC /* MainView.swift in Sources */,
+				4EAD9267EFA6FD7B5EA05E79 /* SpeechRecognizer.swift in Sources */,
+				43F66FA82E57F88FE485D910 /* VisionViewModel.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		1FC9BDF6F0944D0ED6ED224B /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.4;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+		21AF95758169BDD3461AFD6F /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				DEVELOPMENT_TEAM = "";
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = Sources/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.4;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				OTHER_LDFLAGS = "-lc++";
+				PRODUCT_BUNDLE_IDENTIFIER = "com.amma.AmmaRecognize-Rust";
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.9;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		7C98230A2BE3F76138B4503D /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.4;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		899B36CBABC1A7E14E4B0E75 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				DEVELOPMENT_TEAM = "";
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = Sources/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.4;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				OTHER_LDFLAGS = "-lc++";
+				PRODUCT_BUNDLE_IDENTIFIER = "com.amma.AmmaRecognize-Rust";
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.9;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		64000366E7F036D25228E122 /* Build configuration list for PBXNativeTarget "AmmaRecognize-Rust" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				899B36CBABC1A7E14E4B0E75 /* Debug */,
+				21AF95758169BDD3461AFD6F /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		7A43102F9D877406CE66C9BB /* Build configuration list for PBXProject "AmmaRecognize-Rust" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				7C98230A2BE3F76138B4503D /* Debug */,
+				1FC9BDF6F0944D0ED6ED224B /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+
+/* Begin XCLocalSwiftPackageReference section */
+		EAD217F85E902A168F44A443 /* XCLocalSwiftPackageReference "../ForgeSwift" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = ../ForgeSwift;
+		};
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		62B205B62F9516B87670D758 /* ForgeSwift */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = ForgeSwift;
+		};
+/* End XCSwiftPackageProductDependency section */
+	};
+	rootObject = 84D9131A057BB43F8660B162 /* Project object */;
+}

@@ -1,0 +1,48 @@
+[workspace]
+resolver = "2"
+members = [
+    "forge-core",
+    "llama-cpp-sys",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.97"
+license = "MIT"
+repository = "https://github.com/Intallaga-Tech/amma-forge-sdk"
+
+[workspace.dependencies]
+# Internal crates
+llama-cpp-sys = { path = "llama-cpp-sys" }
+
+# Error handling
+thiserror = "1.0"
+anyhow = "1.0"
+
+# Image processing (for vision models)
+image = { version = "0.24", default-features = false, features = ["jpeg", "png"] }
+
+# Audio processing (for speech models - ISTFT vocoder)
+rustfft = "6.2"
+
+# FFI
+libc = "0.2"
+
+# Hashing
+seahash = "4.1"
+
+# Logging
+log = "0.4"
+env_logger = "0.11"
+
+# Build tools (used in build.rs)
+bindgen = "0.69"
+cc = "1.0"
+cbindgen = "0.26"
+
+[profile.release]
+opt-level = 3
+lto = "thin"
+codegen-units = 1
+strip = true

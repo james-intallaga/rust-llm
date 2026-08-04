@@ -1,0 +1,39 @@
+name: AmmaRecognize-Rust
+options:
+  bundleIdPrefix: com.amma
+  deploymentTarget:
+    iOS: "16.4"
+targets:
+  AmmaRecognize-Rust:
+    type: application
+    platform: iOS
+    deploymentTarget: "16.4"
+    sources:
+      - Sources
+    settings:
+      base:
+        INFOPLIST_FILE: Sources/Info.plist
+        GENERATE_INFOPLIST_FILE: NO
+        SWIFT_VERSION: 5.9
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        # Link against llama.xcframework and ForgeRustCore.xcframework
+        OTHER_LDFLAGS:
+          - "-lc++"
+    dependencies:
+      - package: ForgeSwift
+        product: ForgeSwift
+    scheme:
+      testTargets: []
+      run:
+        # Disable Metal API Validation to prevent camera/llama.cpp Metal conflicts
+        environmentVariables:
+          MTL_DEBUG_LAYER: "0"
+        commandLineArguments: {}
+        disableMainThreadChecker: true
+      # Disable GPU validation - this is the key fix for camera + llama.cpp Metal conflict
+      enableGPUFrameCaptureMode: disabled
+      enableGPUValidationMode: disabled
+
+packages:
+  ForgeSwift:
+    path: ../ForgeSwift

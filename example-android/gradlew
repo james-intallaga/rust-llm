@@ -1,0 +1,21 @@
+#!/bin/sh
+# Gradle wrapper startup script
+
+DIRNAME=$(dirname "$0")
+cd "$DIRNAME" || exit
+
+CLASSPATH="$DIRNAME/gradle/wrapper/gradle-wrapper.jar"
+
+# Determine java command
+if [ -n "$JAVA_HOME" ]; then
+    JAVACMD="$JAVA_HOME/bin/java"
+else
+    JAVACMD=$(which java)
+fi
+
+if [ ! -x "$JAVACMD" ]; then
+    echo "ERROR: JAVA_HOME is not set and java command not found"
+    exit 1
+fi
+
+exec "$JAVACMD" -Xmx64m -Xms64m -classpath "$CLASSPATH" org.gradle.wrapper.GradleWrapperMain "$@"

@@ -1,0 +1,91 @@
+# macOS
+.DS_Store
+
+# Local environment and credentials
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p8
+*.p12
+*.mobileprovision
+*.jks
+*.keystore
+google-services.json
+GoogleService-Info.plist
+
+# Xcode
+DerivedData/
+xcuserdata/
+*.xcuserstate
+build/
+*.dSYM/
+*.xcarchive/
+*.xcframework/
+
+# Swift Package Manager
+.build/
+.swiftpm/
+Package.resolved
+
+# IDE
+*.xcworkspace/xcuserdata/
+
+# Build artifacts
+Prod/
+site/
+target/
+Cargo.lock.bak
+*.o
+*.a
+*.so
+*.dylib
+
+# Rust
+**/*.rs.bk
+debug/
+release/
+
+# Backup files
+backup/
+*.back
+*~
+*autosave.kra
+
+# Legacy/unused
+llmfarm_core_legacy.swift
+Resourses/
+
+# Pre-built frameworks (download separately or build locally)
+llama_cpu.xcframework/
+
+# Large files note:
+# The ML models in Tests/similarity-search-kit are tracked normally.
+# If repo size becomes an issue, consider using Git LFS for:
+# - Tests/similarity-search-kit/**/*.bin
+# - Tests/similarity-search-kit/**/*.mlpackage/
+
+# Android local properties
+ForgeAndroid/local.properties
+ForgeAndroid/.gradle/
+ForgeAndroid/build/
+ForgeAndroid/app/build/
+ForgeAndroid/forge-android/build/
+ForgeAndroid/forge-android/.cxx/
+**/.cxx/
+**/.kotlin/
+
+# Android prebuilt libraries (build output)
+forge-rust/build/android/
+
+# llama.cpp Android builds
+llama.cpp/build-android-*/
+
+# Model weights and generated documentation
+*.gguf
+*.ggml
+*.safetensors
+*.onnx
+*.mlmodelc/
+site/
