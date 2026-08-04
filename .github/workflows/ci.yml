@@ -62,5 +62,5 @@ jobs:
       - run: ./forge-rust/scripts/build-android.sh
         env:
           ANDROID_NDK_HOME: ${{ env.ANDROID_HOME }}/ndk/27.0.12077973
-      - run: ./gradlew --no-daemon :app:assembleDebug
+      - run: ./gradlew --no-daemon :app:assembleDebug :app:lintDebug
         working-directory: example-android
