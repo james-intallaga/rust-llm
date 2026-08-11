@@ -17,7 +17,7 @@ repository = "https://github.com/Intallaga-Tech/amma-forge-sdk"
 llama-cpp-sys = { path = "llama-cpp-sys" }
 
 # Error handling
-thiserror = "1.0"
+thiserror = "2.0"
 anyhow = "1.0"
 
 # Image processing (for vision models)
