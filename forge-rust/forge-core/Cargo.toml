@@ -21,7 +21,7 @@ log = { workspace = true }
 seahash = { workspace = true }
 
 [dev-dependencies]
-dirs = "5.0"
+dirs = "6.0"
 
 [build-dependencies]
 cbindgen = { workspace = true }
